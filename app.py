@@ -16,24 +16,44 @@ def allowed_file(filename):
 
 
 def get_image_caption(image_path):
-    with open(image_path, "rb") as f:
-        data = f.read()
-    response = requests.post(API_URL, headers=headers, data=data)
-    return response.json()[0]['generated_text']
-
+    try:
+        with open(image_path, "rb") as f:
+            data = f.read()
+        response = requests.post(API_URL, headers=headers, data=data)
+        result = response.json()
+        
+        # Print response for debugging
+        print("API Response:", result)
+        
+        # Check if response is a list
+        if isinstance(result, list) and len(result) > 0:
+            return result[0]['generated_text']
+        # Check if response is a dictionary
+        elif isinstance(result, dict) and 'generated_text' in result:
+            return result['generated_text']
+        else:
+            return "Unable to generate caption"
+    except Exception as e:
+        print(f"Error generating caption: {str(e)}")
+        return "Error generating caption"
 
 @app.route('/')
 def gallery():
     images = []
-    for filename in os.listdir(app.config['UPLOAD_FOLDER']):
-        if allowed_file(filename):
-            image_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-            caption = get_image_caption(image_path)
-            images.append({
-                'filename': filename,
-                'path': url_for('static', filename=f'uploads/{filename}'),
-                'caption': caption
-            })
+    try:
+        for filename in os.listdir(app.config['UPLOAD_FOLDER']):
+            if allowed_file(filename):
+                image_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+                caption = get_image_caption(image_path)
+                images.append({
+                    'filename': filename,
+                    'path': url_for('static', filename=f'uploads/{filename}'),
+                    'caption': caption
+                })
+    except Exception as e:
+        print(f"Error in gallery route: {str(e)}")
+        flash('Error loading images')
+    
     return render_template('gallery.html', images=images)
 
 
